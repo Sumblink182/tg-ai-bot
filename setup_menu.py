@@ -11,8 +11,9 @@ async def setup_bot_menu():
     commands = [
         BotCommand("start", "启动智能体并获取全能指引"),
         BotCommand("mode", "切换模式 (agent自主执行 / chat安全对话)"),
+        BotCommand("cancel", "强制终止当前正在运行的后台任务"),
         BotCommand("clear", "清除当前记忆，开启全新任务"),
-        BotCommand("status", "查看智能体状态、当前模式与会话ID"),
+        BotCommand("status", "查看系统状态、运行模式与安全配置"),
         BotCommand("id", "获取你的 Telegram 用户数字 ID"),
         BotCommand("help", "查看详细功能使用指南")
     ]

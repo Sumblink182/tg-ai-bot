@@ -1,14 +1,18 @@
 [Unit]
-Description=Telegram AI Bot Service
+Description=Telegram AI Bot Service (Cloud Autonomous Agent)
 After=network.target
 
 [Service]
 Type=simple
-User=root
-WorkingDirectory=/root/tg-ai-bot
-ExecStart=/root/tg-ai-bot/venv/bin/python3 /root/tg-ai-bot/bot.py
+User=tgbot
+Group=tgbot
+WorkingDirectory=/opt/tg-ai-bot
+ExecStart=/opt/tg-ai-bot/venv/bin/python3 -u /opt/tg-ai-bot/bot.py
 Restart=always
 RestartSec=5
+# 限制子进程提权，提升系统安全性
+NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
+

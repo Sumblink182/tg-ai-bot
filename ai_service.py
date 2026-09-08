@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from typing import Optional
 from openai import AsyncOpenAI, APIError, AuthenticationError, RateLimitError
 import config
 
@@ -7,19 +8,28 @@ logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        self.client = None
+        self.client: Optional[AsyncOpenAI] = None
         self._init_client()
         # 内存中保存每个 chat_id 的历史对话：[{"role": "user"|"assistant", "content": "..."}]
         self.histories = defaultdict(list)
 
     def _init_client(self):
         if not config.OPENAI_API_KEY:
-            logger.warning("OPENAI_API_KEY 未配置，AI 请求将无法正常调用。")
+            self.client = None
             return
-        self.client = AsyncOpenAI(
-            api_key=config.OPENAI_API_KEY,
-            base_url=config.OPENAI_BASE_URL
-        )
+        try:
+            self.client = AsyncOpenAI(
+                api_key=config.OPENAI_API_KEY,
+                base_url=config.OPENAI_BASE_URL
+            )
+            logger.info(f"OpenAI 兼容备用 AI 引擎初始化成功 (模型: {config.FALLBACK_MODEL})")
+        except Exception as e:
+            logger.error(f"初始化 OpenAI 客户端失败: {e}")
+            self.client = None
+
+    def is_available(self) -> bool:
+        """检查备用 AI 服务是否已配置且可用"""
+        return bool(config.ENABLE_FALLBACK and config.OPENAI_API_KEY and self.client)
 
     def reload_client(self):
         """重新读取配置并初始化 client"""
@@ -36,11 +46,12 @@ class AIService:
         return len(self.histories.get(chat_id, []))
 
     async def ask_ai(self, chat_id: int, prompt: str) -> str:
-        """向 AI 发送提问并返回回答（带上下文记忆）"""
-        if not self.client:
-            self._init_client()
-            if not self.client:
-                return "❌ 尚未配置 OPENAI_API_KEY，请在 .env 文件中配置后重启 Bot。"
+        """向备用 AI 发送提问并返回回答（带上下文记忆）"""
+        if not self.is_available():
+            if not self.client and config.OPENAI_API_KEY:
+                self._init_client()
+            if not self.is_available():
+                return "❌ 尚未配置有效的 OPENAI_API_KEY，备用 AI 兜底不可用。"
 
         # 构建本轮消息列表
         messages = [{"role": "system", "content": config.SYSTEM_PROMPT}]
@@ -51,7 +62,7 @@ class AIService:
 
         try:
             response = await self.client.chat.completions.create(
-                model=config.MODEL_NAME,
+                model=config.FALLBACK_MODEL,
                 messages=messages
             )
             reply = response.choices[0].message.content or ""
@@ -72,17 +83,18 @@ class AIService:
             return reply
 
         except AuthenticationError:
-            logger.error("API Key 无效或未授权。")
-            return "❌ API Key 无效或未授权，请检查 .env 中的 OPENAI_API_KEY 与 OPENAI_BASE_URL。"
+            logger.error("备用 API Key 无效或未授权。")
+            return "❌ 备用 API Key 无效或未授权，请检查 .env 中的 OPENAI_API_KEY 与 OPENAI_BASE_URL。"
         except RateLimitError:
-            logger.error("API 额度超限或请求频次过高。")
-            return "⚠️ API 额度已用尽或请求过于频繁，请稍后再试。"
+            logger.error("备用 API 额度超限或请求频次过高。")
+            return "⚠️ 备用 API 额度已用尽或请求过于频繁，请稍后再试。"
         except APIError as e:
-            logger.error(f"API 调用出错: {e}")
-            return f"❌ AI 服务返回错误: {e.message if hasattr(e, 'message') else str(e)}"
+            logger.error(f"备用 API 调用出错: {e}")
+            return f"❌ 备用 AI 服务返回错误: {getattr(e, 'message', str(e))}"
         except Exception as e:
-            logger.exception("未知错误")
-            return f"❌ 处理请求时出现异常: {str(e)}"
+            logger.exception("备用 AI 发生未捕获异常")
+            return f"❌ 备用 AI 处理请求时出现异常: {str(e)}"
 
 # 单例实例
 ai_service = AIService()
+
