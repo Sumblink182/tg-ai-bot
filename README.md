@@ -13,18 +13,52 @@
 <p align="center">
   <b>你的 24 小时云端驻留通用自主智能体 (Personal Autonomous Agent)。</b><br>
   以 Linux 服务器为物理具身与手脚，以 Telegram 为随身交互中枢。<br>
-  💡 <b>零 API 成本</b> | 🧠 <b>原生深度推理</b> | 🛠️ <b>全自主代码/数据/系统接管</b> | 🛡️ <b>白名单防盗刷</b> | ⚡ <b>内存仅 ~20MB</b>
+  💡 <b>零 API 成本</b> | 🧠 <b>原生深度推理</b> | 🛠️ <b>全自主代码/数据/系统接管</b> | 🛡️ <b>100% 私有化自建</b> | ⚡ <b>内存仅 ~20MB</b>
 </p>
 
 ---
 
-## ⚡ 极速一键安装 (One-click Install)
+## 🛡️ 100% 私有化自建架构 (Self-Hosted & Privacy First)
 
-在你的 Linux VPS（Ubuntu / Debian）上直接运行以下命令，即可在 1 分钟内全自动安装、配置并守护启动：
+> [!IMPORTANT]
+> **关于部署形态说明**：
+> 本项目为 **100% 独立开源私有化架构**，**无任何中心化第三方服务器收集你的数据**。
+> 每位使用者都在自己的 Linux VPS 上运行专属进程，并通过 Telegram [@BotFather](https://t.me/BotFather) 绑定属于自己的独立 Bot Token 与白名单 ID。
+> 你的会话历史、系统命令与数据隐私完全封闭在自己的服务器内部，拥有绝对的数据主权！
+
+```mermaid
+graph LR
+    subgraph 独立私有环境 A
+        UserA[用户 A (Telegram)] --> BotA[用户 A 专属机器人] --> VPSA[用户 A 的 VPS 宿主机]
+    end
+
+    subgraph 独立私有环境 B
+        UserB[用户 B (Telegram)] --> BotB[用户 B 专属机器人] --> VPSB[用户 B 的 VPS 宿主机]
+    end
+
+    subgraph 独立私有环境 C
+        UserC[用户 C (Telegram)] --> BotC[用户 C 专属机器人] --> VPSC[用户 C 的 VPS 宿主机]
+    end
+```
+
+---
+
+## ⚡ 极速一键自建安装 (One-click Install)
+
+只需简单 3 步，即可拥有属于你自己的云端自主智能体：
+
+### 第一步：获取你的专属 Bot Token
+1. 在 Telegram 中搜索 [@BotFather](https://t.me/BotFather)。
+2. 发送 `/newbot`，按提示起名并设置用户名（以 `bot` 结尾）。
+3. 复制生成的 HTTP API Token（形如 `123456789:ABCdef...`）。
+
+### 第二步：在你的 Linux VPS 上运行一键脚本
+在你的服务器终端（Ubuntu / Debian）执行以下命令：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/Sumblink182/tg-ai-bot/main/install.sh)
 ```
+根据交互提示粘贴你刚获取的 Bot Token 即可自动全配置上线并注册开机自启！
 
 ---
 
