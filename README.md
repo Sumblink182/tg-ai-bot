@@ -43,22 +43,35 @@ graph LR
 
 ---
 
-## ⚡ 极速一键自建安装 (One-click Install)
+## 📋 极简前置准备（Prerequisites，仅需 1 分钟）
 
-只需简单 3 步，即可拥有属于你自己的云端自主智能体：
+在运行一键安装脚本前，只需完成以下两项极简准备：
 
-### 第一步：获取你的专属 Bot Token
-1. 在 Telegram 中搜索 [@BotFather](https://t.me/BotFather)。
-2. 发送 `/newbot`，按提示起名并设置用户名（以 `bot` 结尾）。
+### 1️⃣ 安装并认证 Google Antigravity CLI
+本项目复用 Antigravity 原生免 API Key 调取 **Gemini 3.8 Flash** 并赋予系统执行力。在你的 Linux 终端执行：
+```bash
+# 安装官方 CLI 客户端
+curl -fsSL https://antigravity.google/install.sh | bash
+
+# 终端输入 agy 完成一次 Google 账号认证登录（终端会打印授权链接，浏览器点一下即可）
+agy
+```
+
+### 2️⃣ 获取你的专属 Telegram Bot Token
+1. 在 Telegram 搜索 [@BotFather](https://t.me/BotFather) 并发送 `/newbot`。
+2. 按照提示输入机器人名字和用户名（以 `bot` 结尾）。
 3. 复制生成的 HTTP API Token（形如 `123456789:ABCdef...`）。
 
-### 第二步：在你的 Linux VPS 上运行一键脚本
-在你的服务器终端（Ubuntu / Debian）执行以下命令：
+---
+
+## ⚡ 极速一键自建安装 (One-click Install)
+
+完成上述前置后，在你的 Linux VPS（Ubuntu / Debian）上直接执行：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/Sumblink182/tg-ai-bot/main/install.sh)
 ```
-根据交互提示粘贴你刚获取的 Bot Token 即可自动全配置上线并注册开机自启！
+根据交互提示粘贴你的 Bot Token，脚本将自动完成依赖安装、环境配置与 systemd 开机自启守护！
 
 ---
 
@@ -150,61 +163,6 @@ graph TD
 | `/status` | 查看当前连接状态、后端模型与活跃会话 ID |
 | `/id` | 获取当前用户的 Telegram 数字 ID（用于白名单配置） |
 | `/help` | 查看详细帮助与说明指南 |
-
----
-
-## 🚀 手动部署教程
-
-### 1. 环境准备
-- Linux 操作系统（Ubuntu 22.04 / 24.04、Debian 12+）
-- Python 3.10+
-- 已在系统中完成认证的 [Google Antigravity CLI](https://antigravity.google) (`agy`)
-
-```bash
-git clone https://github.com/Sumblink182/tg-ai-bot.git
-cd tg-ai-bot
-```
-
-### 2. 初始化环境与安装依赖
-```bash
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-```
-
-### 3. 配置环境变量
-```bash
-cp .env.example .env
-nano .env
-```
-配置项说明：
-```env
-# 必填：从 @BotFather 获取的 Bot Token
-TELEGRAM_BOT_TOKEN=1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ
-
-# 必填推荐：只允许你自己的 Telegram 数字 ID (防他人越权)
-ALLOWED_USER_IDS=8808188711
-
-# 选填：默认使用的模型
-MODEL_NAME=gemini-3.8-flash-high
-
-# 选填：全局默认运行模式 (chat 或 agent)
-AGENT_MODE=chat
-```
-
-### 4. 注册菜单并启动常驻
-```bash
-# 注册 Telegram 官方底部 Menu 按钮
-./venv/bin/python3 setup_menu.py
-
-# 注册为 systemd 开机自启服务
-cp tg-ai-bot.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable --now tg-ai-bot
-
-# 监控实时状态
-systemctl status tg-ai-bot
-journalctl -u tg-ai-bot -f
-```
 
 ---
 
