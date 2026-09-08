@@ -45,19 +45,22 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     welcome_text = (
         f"👋 你好，{user.first_name if user else '朋友'}！\n\n"
-        f"🤖 我是你的 **Telegram ↔ VPS 智能运维管家与 AI 助手** (基于 Google Gemini 3.8 Flash)。\n\n"
-        "✨ **核心能力**：\n"
-        "• 搭载 Gemini 3.8 Flash (High) 深度推理大模型\n"
-        "• 具备原生 VPS 系统指令执行与自动化运维能力\n"
-        "• 原生支持多轮长记忆上下文\n"
-        f"• 当前模式: `{current_mode.upper()}`\n\n"
+        f"🤖 我是你的 **24 小时云端驻留通用自主智能体 (Cloud Autonomous Agent)**\n"
+        "以 Linux 服务器为具身手脚，以 Telegram 为随身交互中枢，由 **Google Gemini 3.8 Flash (High)** 深度推理引擎驱动。\n\n"
+        "✨ **五大核心自主能力**：\n"
+        "1. 💻 **自主全栈研发**：独立写代码、建项目、配环境、部署 Web 服务\n"
+        "2. 📡 **全自动情报搜集**：爬取网页、监控价格/榜单、整理学术论文\n"
+        "3. 📊 **数据管道与重型计算**：大文件清洗、格式转换、数据统计与图表\n"
+        "4. 🔄 **工作流与跨云中枢**：定时任务、文件自动打包、云存储同步\n"
+        "5. 🛡️ **基础设施自愈运维**：硬件体检、日志排查、故障自动修复\n\n"
+        f"⚙️ **当前运行模式**: `{current_mode.upper()}`\n\n"
         "📌 **常用指令**：\n"
-        "• `/mode` - 切换运行模式 (`/mode chat` 纯对话 / `/mode agent` 运维管家)\n"
-        "• `/clear` 或 `/reset` - 清除当前会话记忆，开启新话题\n"
-        "• `/status` - 查看当前连接状态、运行模式与会话信息\n"
-        "• `/id` - 查看你的 Telegram 数字 ID\n"
-        "• `/help` - 查看更多使用说明\n\n"
-        "💬 直接向我发送任意问题或运维需求，我将立即为你处理！"
+        "• `/mode` - 切换模式 (`/mode agent` 全自主执行 / `/mode chat` 纯安全对话)\n"
+        "• `/clear` 或 `/reset` - 清除当前记忆上下文，开启全新任务\n"
+        "• `/status` - 查看当前连接状态、运行模式与活跃会话 ID\n"
+        "• `/id` - 查看你的 Telegram 用户数字 ID\n"
+        "• `/help` - 查看详细功能使用说明\n\n"
+        "💬 直接向我发送任意复杂任务或问题，我将立即为你自主规划并执行！"
     )
     await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
 
@@ -73,16 +76,16 @@ async def mode_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not args:
         current_mode = agy_engine.get_mode(chat_id)
         desc = (
-            "🛡️ **纯对话安全模式**（安全问答思考，不执行服务器系统命令）"
+            "🛡️ **纯对话安全模式**（安全问答思考，不调用系统命令）"
             if current_mode == "chat"
-            else "🛠️ **全功能 DevOps Agent 模式**（已赋予宿主机终端执行与文件操作权）"
+            else "🛠️ **通用自主 Agent 模式**（已激活宿主机环境执行权，可全自动写代码、爬虫、跑命令）"
         )
         text = (
             f"⚙️ **当前运行模式**: `{current_mode.upper()}`\n"
             f"说明: {desc}\n\n"
             "📌 **如何切换模式**：\n"
             "• `/mode chat` - 切为纯对话安全模式\n"
-            "• `/mode agent` - 切为 DevOps 运维 Agent 模式"
+            "• `/mode agent` - 切为通用自主 Agent 模式（激活具身执行力）"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
         return
@@ -92,18 +95,18 @@ async def mode_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         agy_engine.set_mode(chat_id, target)
         if target == "agent":
             msg = (
-                "🚀 **已切换为: 全功能 DevOps Agent 模式**\n\n"
-                "⚠️ **宿主机执行权已激活**：Gemini 3.8 Flash 现在可以直接调用服务器终端命令、查看日志、排障和管理文件。\n\n"
-                "💡 **试着对我说**：\n"
-                "• *帮我检查当前服务器磁盘和内存*\n"
-                "• *查看 docker 容器运行状态*\n"
-                "• *看看 nginx 错误日志为什么报错*\n"
-                "• *查看占用 80 端口的进程*"
+                "🚀 **已切换为: 全功能自主 Agent 模式**\n\n"
+                "⚠️ **具身执行权已激活**：Gemini 3.8 Flash 现在可以直接调用宿主机 Shell、编写与部署代码、进行爬虫搜集与系统自愈。\n\n"
+                "💡 **试着指派复合任务**：\n"
+                "• *帮我写一个轻量 API 服务跑在 8080 端口*\n"
+                "• *写个爬虫抓取 Hacker News 热门发给我*\n"
+                "• *检查当前服务器磁盘、内存与异常日志*\n"
+                "• *帮我写个定时备份脚本加入 crontab*"
             )
         else:
             msg = (
                 "🛡️ **已切换为: 纯对话安全模式**\n\n"
-                "机器人将仅进行深度思考与推理问答，不会调用任何服务器系统命令。"
+                "智能体将仅进行深度思考与推理问答，不会调用任何服务器系统命令。"
             )
         await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
     else:
@@ -116,12 +119,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id if update.effective_user else 0
     logger.info(f"收到用户 {user_id} 的 /help 指令")
     help_text = (
-        "📖 **使用帮助指南**\n\n"
-        "1. **日常对话与任务**：直接发送消息，机器人会自动记住前序上下文并处理。\n"
+        "📖 **通用自主智能体使用帮助指南**\n\n"
+        "1. **任务指派**：直接发送自然语言需求，Agent 会自动理解、规划步骤并在云端自主完成。\n"
         "2. **/mode**：查看或切换运行模式：\n"
-        "   - `/mode chat`：纯对话安全模式（默认）\n"
-        "   - `/mode agent`：全功能 DevOps 运维模式（可执行系统命令、巡检排障）\n"
-        "3. **/clear**：随时清空历史记忆，开启新的独立会话。\n"
+        "   - `/mode agent`：全自主 Agent 模式（允许敲命令、写代码、查日志、做爬虫）\n"
+        "   - `/mode chat`：纯对话安全模式（仅回答问题，不执行命令）\n"
+        "3. **/clear**：随时清空历史记忆，开启新的独立任务。\n"
         "4. **/status**：查看后端模型、运行模式和会话状态。\n"
         "5. **/id**：查看你的数字 ID（用于白名单配置）。\n\n"
         f"⚙️ **后端模型**: `{config.MODEL_NAME}`"
@@ -149,7 +152,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_text = (
         "📊 **系统运行状态**\n\n"
         f"• **AI 模型**: `{config.MODEL_NAME}`\n"
-        f"• **当前模式**: `{current_mode.upper()} ({'全功能运维' if current_mode == 'agent' else '纯安全对话'})`\n"
+        f"• **当前模式**: `{current_mode.upper()} ({'全自主 Agent 执行' if current_mode == 'agent' else '纯安全对话'})`\n"
         f"• **引擎路径**: `{config.AGY_BIN_PATH}`\n"
         f"• **当前会话 ID**: `{conv_id if conv_id else '暂无活跃会话（发送首条消息后自动生成）'}`\n"
         f"• **白名单保护**: `{'已启用 (' + str(len(config.ALLOWED_USER_IDS)) + ' 人)' if config.ALLOWED_USER_IDS else '未限制（公开）'}`"
@@ -162,9 +165,9 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"收到 chat_id={chat_id} 的 /clear 指令")
     had_session = agy_engine.clear(chat_id)
     if had_session:
-        await update.message.reply_text("🧹 已重置并清空当前会话记忆，接下来我们可以聊新话题了！")
+        await update.message.reply_text("🧹 已重置并清空当前会话记忆，接下来我们可以开启全新任务了！")
     else:
-        await update.message.reply_text("✨ 当前本来就是全新会话，无需清理，请直接提问！")
+        await update.message.reply_text("✨ 当前本来就是全新会话，无需清理，请直接指派任务！")
 
 async def send_split_message(update: Update, text: str):
     """安全分段发送长消息，Markdown 解析失败时自动降级为纯文本"""

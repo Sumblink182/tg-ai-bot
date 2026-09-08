@@ -9,12 +9,12 @@ async def setup_bot_menu():
 
     bot = Bot(token=config.TELEGRAM_BOT_TOKEN)
     commands = [
-        BotCommand("start", "启动机器人并获取欢迎指引"),
-        BotCommand("mode", "切换运行模式 (chat纯对话 / agent运维管家)"),
-        BotCommand("clear", "清除当前记忆上下文，开启新话题"),
-        BotCommand("status", "查看系统状态、当前模式与会话ID"),
+        BotCommand("start", "启动智能体并获取全能指引"),
+        BotCommand("mode", "切换模式 (agent自主执行 / chat安全对话)"),
+        BotCommand("clear", "清除当前记忆，开启全新任务"),
+        BotCommand("status", "查看智能体状态、当前模式与会话ID"),
         BotCommand("id", "获取你的 Telegram 用户数字 ID"),
-        BotCommand("help", "查看详细功能使用说明")
+        BotCommand("help", "查看详细功能使用指南")
     ]
     
     print("🚀 正在向 Telegram 官方注册指令菜单...")
