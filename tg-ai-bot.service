@@ -1,0 +1,14 @@
+[Unit]
+Description=Telegram AI Bot Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/tg-ai-bot
+ExecStart=/root/tg-ai-bot/venv/bin/python3 /root/tg-ai-bot/bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

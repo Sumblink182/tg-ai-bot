@@ -1,0 +1,19 @@
+# 敏感环境变量与凭据
+.env
+
+# 运行态会话缓存与日志
+sessions.json
+*.log
+*.pid
+
+# Python 虚拟环境与缓存
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 系统与编辑器文件
+.DS_Store
+.vscode/
+.idea/
