@@ -17,6 +17,11 @@ import config
 from agy_engine import agy_engine
 from ai_service import ai_service
 
+try:
+    import quota as quota_module
+except Exception:
+    quota_module = None
+
 # 配置日志
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -322,6 +327,11 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• **安全白名单**: `{whitelist_badge}`\n"
         f"• **并发保护上限**: `全局最大 {config.MAX_CONCURRENT_TASKS} 个任务`"
     )
+    if quota_module is not None:
+        try:
+            status_text += "\n\n" + quota_module.format_markdown(quota_module.get_quota())
+        except Exception:
+            pass
     await update.message.reply_text(status_text, parse_mode=ParseMode.MARKDOWN)
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -409,6 +419,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_text = result.get("response", "（无回答返回）")
         logger.info(f"📤 成功生成回复并发送给用户 {user_id}")
         await send_split_message(update, reply_text)
+        # 后台刷新额度缓存（读取本地 agy RPC，零 token 开销）
+        if quota_module is not None:
+            try:
+                asyncio.create_task(quota_module.probe_and_cache())
+            except Exception:
+                pass
     else:
         error_msg = result.get("error", "❌ 执行失败，未知错误。")
         logger.error(f"处理用户 {user_id} 消息失败: {error_msg}")
