@@ -1,4 +1,4 @@
-# 🤖 Telegram ↔ Antigravity (Gemini 3.8 Flash) AI Assistant
+# 🤖 Telegram ↔ VPS AI DevOps Agent (Gemini 3.8 Flash)
 
 <p align="center">
   <a href="https://github.com/Sumblink182/tg-ai-bot/stargazers"><img src="https://img.shields.io/github/stars/Sumblink182/tg-ai-bot?color=yellow&logo=github" alt="GitHub Stars"></a>
@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <b>将本地 Google Antigravity CLI (Gemini 3.8 Flash) 深度桥接到 Telegram 的轻量开源 AI 机器人。</b><br>
-  💡 <b>零外部 API 成本</b> | 🧠 <b>原生多轮深度思考与记忆</b> | 🛡️ <b>白名单防盗刷</b> | ⚡ <b>内存占用仅 ~20MB</b>
+  <b>一个将 Google Antigravity (Gemini 3.8 Flash) 深度接入 Telegram 的轻量开源 AI DevOps 运维智能体。</b><br>
+  💡 <b>零 API 成本</b> | 🛠️ <b>全自动 VPS 运维自愈</b> | 🧠 <b>原生多轮深度思考</b> | 🛡️ <b>白名单防盗刷</b> | ⚡ <b>内存仅 ~20MB</b>
 </p>
 
 ---
@@ -27,67 +27,96 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Sumblink182/tg-ai-bot/main/i
 
 ---
 
+## 🌟 核心理念：从“聊天玩具”到“全自动系统级 Agent”
+
+市面上绝大多数 Telegram AI 机器人只能“纸上谈兵”给出代码让你手动执行；而本项目直接将 **拥有真实 Linux 宿主机操作权** 的 **Google Antigravity Agent** 带入 Telegram！
+
+你在手机上随手发一句自然语言，它会在后台**自主规划、敲命令、查日志、自愈修复并向你结构化汇报**，出门在外再也无需掏出电脑连接 SSH！
+
+```mermaid
+graph TD
+    User([你在手机 Telegram 发送指令]) --> TG[tg-ai-bot 路由网关]
+    TG --> AGY[Antigravity 3.8 Flash 引擎]
+
+    subgraph VPS 宿主机自动化执行环境
+        AGY --> C1[1. 硬件巡检: 自动执行 free, df, top 并分析算比]
+        AGY --> C2[2. 日志排查: 读取 nginx/docker 报错日志定位故障]
+        AGY --> C3[3. 进程管理: 查找占用端口、kill 卡死进程、重启服务]
+        AGY --> C4[4. 脚本与任务: 自动编写备份脚本并加入 crontab]
+        AGY --> C5[5. 安全检测: 查看开放端口、防火墙策略与网络连接]
+    end
+
+    C1 --> Finish[汇总结算并用结构化 Markdown 回传 Telegram]
+    C2 --> Finish
+    C3 --> Finish
+    C4 --> Finish
+    C5 --> Finish
+    Finish --> User
+```
+
+---
+
+## 🎭 双模式无缝切换 (`/mode`)
+
+为了兼顾“日常纯问答不误触”与“全功能运维干活”，支持在 Telegram 中随时自由切换：
+
+| 模式 | 指令 | 说明 | 权限 |
+| :--- | :--- | :--- | :--- |
+| **纯对话安全模式** | `/mode chat` | 适合查资料、写代码、翻译、生活咨询，仅推理问答 | 🔒 严格隔离，不执行任何系统命令 |
+| **DevOps Agent 模式** | `/mode agent` | 适合远程运维、服务器体检、日志排障、写定时任务 | 🛠️ 激活宿主机 Shell、文件与进程操作权 |
+
+---
+
+## 🛠️ 典型实战场景展示
+
+### 场景 1：服务器硬件与健康状态巡检
+- **你在 TG 说**：`帮我看看当前 VPS 磁盘空间和内存使用`
+- **Agent 自主输出**：
+  > 📊 **系统资源运行报告**：  
+  > • **内存**：总量 961MB，已用 589MB，可用 372MB (38.7%)，运行健康。  
+  > • **磁盘**：系统盘 `/` 共 20GB，已用 4.8GB (24%)，剩余 15.2GB。  
+  > • **CPU 负载**：近 1 分钟负载 0.08，系统非常空闲。
+
+### 场景 2：网站故障排查与自愈
+- **你在 TG 说**：`我的网站报 502 错误，帮我看看怎么回事并修复`
+- **Agent 自主行动**：自动执行 `curl` 探测 -> 读取 `/var/log/nginx/error.log` -> 发现后端某服务端口挂掉 -> 自动执行 `systemctl restart <service>` 恢复服务 -> 回复确认。
+
+### 场景 3：自动化脚本与定时任务
+- **你在 TG 说**：`帮我写一个每天凌晨 3 点自动清理 /tmp 临时文件的脚本并加入 crontab`
+- **Agent 自主行动**：创建清理脚本 -> 赋予执行权限 -> 写入 crontab 定时器 -> 回传任务配置确认。
+
+---
+
 ## 📊 为什么选择本项目？（特性对比）
 
 | 对比维度 | 传统 Telegram AI Bot | 本项目 (tg-ai-bot) |
 | :--- | :--- | :--- |
-| **API 成本** | 需持续购买 OpenAI / DeepSeek Token，长期花费高 | 💡 **完全免费**，复用本地已认证的 Antigravity 原生授权 |
-| **大模型能力** | 多为 gpt-3.5 或低阶模型，推理慢 | ⚡ **Google 最新 Gemini 3.8 Flash (High)** 深度推理模型 |
-| **VPS 资源占用** | 往往需要 Docker / 重型框架，动辄 200MB~500MB | 🍃 **极轻量**，单进程常驻仅需 **~20MB** 内存 |
+| **API 成本** | 需持续购买 OpenAI / DeepSeek Token，高昂账单 | 💡 **完全免费**，复用本地已认证的 Antigravity 原生授权 |
+| **大模型能力** | 多为 gpt-3.5 或低阶模型，缺乏思考能力 | ⚡ **Google 最新 Gemini 3.8 Flash (High)** 深度推理模型 |
+| **真实系统执行** | ❌ 无法操作服务器，只能给出文字代码 | 🛠️ **全自主 Agent**，可自主运行命令排查自愈 |
+| **VPS 资源占用** | 往往需要重型 Docker 容器，动辄 300MB+ | 🍃 **极轻量**，单进程常驻仅需 **~20MB** 内存 |
 | **安全性** | 容易被群聊或他人盗刷 API 额度 | 🛡️ **严格白名单控制**，非授权 User ID 秒级拒绝 |
 | **系统可靠性** | 临时挂起容易掉线 | 🔄 预制 **systemd 生产级守护**，开机自启、崩溃秒级自愈 |
-| **扩展能力** | 仅限于纯文本问答 | 🛠️ 支持切换 `agent` 模式，实现远程自动化运维与编程任务 |
 
 ---
 
-## 🏗️ 架构原理解析
+## 🤖 常用 Telegram 指令速查
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 用户 (Telegram App)
-    participant TG as Telegram Bot 进程 (bot.py)
-    participant Engine as agy 调度引擎 (agy_engine.py)
-    participant AGY as 本地 Antigravity CLI (/root/.local/bin/agy)
-    participant Cloud as Google DeepMind (Gemini 3.8 Flash)
-
-    User->>TG: 发送问题 / 任务
-    TG->>TG: 校验 User ID 白名单权限
-    TG->>TG: 触发后台持续 Typing (正在输入...) 提示
-    TG->>Engine: 请求生成回答 (携带 chat_id)
-    Engine->>AGY: 执行 agy -p "..." --conversation <id> --output-format json
-    AGY->>Cloud: 带有前序上下文与深度思考请求
-    Cloud-->>AGY: 返回结构化推理结果与 Token 统计
-    AGY-->>Engine: 输出 JSON 格式回执
-    Engine-->>TG: 提取 response 并更新本地会话映射
-    TG-->>User: 自动长文本分片与 Markdown 优雅降级回传
-```
+| 指令 | 说明 |
+| :--- | :--- |
+| `/start` | 启动机器人并显示欢迎指引与当前运行模式 |
+| `/mode` | 查看当前模式；可使用 `/mode chat` 或 `/mode agent` 进行切换 |
+| `/clear` 或 `/reset` | 清空当前会话的上下文记忆，开启新话题 |
+| `/status` | 查看当前连接状态、后端模型与活跃会话 ID |
+| `/id` | 获取当前用户的 Telegram 数字 ID（用于白名单配置） |
+| `/help` | 查看详细帮助与命令指南 |
 
 ---
 
-## 📂 项目结构
+## 🚀 手动部署指南
 
-```text
-├── install.sh          # 一键极速部署与向导脚本
-├── setup_menu.py       # Telegram 官方快捷菜单注册脚本
-├── agy_engine.py       # Antigravity CLI 子进程调度引擎与 Session 映射管理
-├── bot.py              # Telegram 机器人主程序 (长轮询 + 容错切片)
-├── config.py           # 环境变量与安全配置加载器
-├── requirements.txt    # Python 最小化依赖清单
-├── start.sh            # 快捷后台启动脚本
-├── stop.sh             # 快捷后台停止脚本
-├── status.sh           # 运行状态与最近日志检查脚本
-├── tg-ai-bot.service   # systemd 系统守护单元配置
-├── .env.example        # 环境变量配置模板
-└── README.md           # 项目完整说明文档
-```
-
----
-
-## 🚀 手动部署教程
-
-### 1. 环境依赖准备
-- Linux 操作系统（Ubuntu 22.04 / 24.04、Debian 12+）
+### 1. 环境准备
+- Linux 服务器（Ubuntu 22.04 / 24.04、Debian 12+）
 - Python 3.10+
 - 已在系统中完成认证的 [Google Antigravity CLI](https://antigravity.google) (`agy`)
 
@@ -96,38 +125,38 @@ git clone https://github.com/Sumblink182/tg-ai-bot.git
 cd tg-ai-bot
 ```
 
-### 2. 初始化虚拟环境
+### 2. 初始化环境与安装依赖
 ```bash
 python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 ```
 
-### 3. 配置 `.env` 文件
+### 3. 配置环境变量
 ```bash
 cp .env.example .env
 nano .env
 ```
-修改核心配置：
+配置项：
 ```env
 # 必填：从 @BotFather 获取的 Bot Token
 TELEGRAM_BOT_TOKEN=1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ
 
-# 选填：只允许你自己使用的 Telegram 数字 ID (防盗刷)
+# 必填推荐：只允许你自己的 Telegram 数字 ID (防他人越权)
 ALLOWED_USER_IDS=8808188711
 
 # 选填：默认使用的模型
 MODEL_NAME=gemini-3.8-flash-high
 
-# 选填：运行模式 (chat: 安全问答; agent: 远程执行)
+# 选填：全局默认运行模式 (chat 或 agent)
 AGENT_MODE=chat
 ```
 
-### 4. 注册官方菜单并启动
+### 4. 注册菜单并启动常驻
 ```bash
-# 注册 Telegram 底部 Menu 按钮
+# 向 Telegram 官方注册底部 Menu 快捷按钮
 ./venv/bin/python3 setup_menu.py
 
-# 注册为 systemd 开机自启服务
+# 配置为 systemd 开机自启服务
 cp tg-ai-bot.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now tg-ai-bot
@@ -139,21 +168,10 @@ journalctl -u tg-ai-bot -f
 
 ---
 
-## 🤖 常用 Telegram 指令
-
-| 指令 | 说明 |
-| :--- | :--- |
-| `/start` | 启动机器人并显示功能概览与快捷入口 |
-| `/clear` 或 `/reset` | 清空当前对话上下文记忆，开启新话题 |
-| `/status` | 查看当前连接状态、后端模型与会话 ID |
-| `/id` | 获取当前用户的 Telegram 数字 ID（方便填入白名单） |
-| `/help` | 查看详细帮助与说明指南 |
-
----
-
-## 🔒 隐私与安全性保障
-- 本项目遵循严格的安全工程规范，真实 `.env` 与会话缓存 `sessions.json` 已被 `.gitignore` 彻底隔离，绝不会上传。
-- 强烈建议在生产环境配置 `ALLOWED_USER_IDS`，开启白名单防护。
+## 🔒 安全说明
+本项目遵循严格的安全设计：
+- 生产环境务必配置 `ALLOWED_USER_IDS`，确保只有你个人的 Telegram 账号能指挥 VPS。
+- 真实的 `.env` 配置文件与运行时 `sessions.json` 已被 `.gitignore` 全面排除，绝不上传到公开代码仓库。
 
 ---
 

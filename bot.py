@@ -31,6 +31,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /start 命令"""
     user = update.effective_user
     user_id = user.id if user else 0
+    chat_id = update.effective_chat.id
+    current_mode = agy_engine.get_mode(chat_id)
     logger.info(f"收到用户 {user_id} ({user.first_name if user else ''}) 的 /start 指令")
 
     if not is_user_allowed(user_id):
@@ -43,19 +45,71 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     welcome_text = (
         f"👋 你好，{user.first_name if user else '朋友'}！\n\n"
-        f"🤖 我是连接到本地 **Antigravity ({config.MODEL_NAME})** 的智能助手。\n\n"
+        f"🤖 我是你的 **Telegram ↔ VPS 智能运维管家与 AI 助手** (基于 Google Gemini 3.8 Flash)。\n\n"
         "✨ **核心能力**：\n"
-        "• 原生搭载 Google Gemini 3.8 Flash (High) 深度推理模型\n"
-        "• 支持长上下文多轮记忆对话\n"
-        f"• 当前运行模式: `{config.AGENT_MODE.upper()}`\n\n"
+        "• 搭载 Gemini 3.8 Flash (High) 深度推理大模型\n"
+        "• 具备原生 VPS 系统指令执行与自动化运维能力\n"
+        "• 原生支持多轮长记忆上下文\n"
+        f"• 当前模式: `{current_mode.upper()}`\n\n"
         "📌 **常用指令**：\n"
+        "• `/mode` - 切换运行模式 (`/mode chat` 纯对话 / `/mode agent` 运维管家)\n"
         "• `/clear` 或 `/reset` - 清除当前会话记忆，开启新话题\n"
-        "• `/status` - 查看当前连接状态与会话信息\n"
+        "• `/status` - 查看当前连接状态、运行模式与会话信息\n"
         "• `/id` - 查看你的 Telegram 数字 ID\n"
-        "• `/help` - 查看更多说明\n\n"
-        "💬 直接向我发送任意问题，我将立即为你思考解答！"
+        "• `/help` - 查看更多使用说明\n\n"
+        "💬 直接向我发送任意问题或运维需求，我将立即为你处理！"
     )
     await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
+
+async def mode_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /mode 模式切换命令"""
+    user_id = update.effective_user.id if update.effective_user else 0
+    if not is_user_allowed(user_id):
+        return
+
+    chat_id = update.effective_chat.id
+    args = context.args
+
+    if not args:
+        current_mode = agy_engine.get_mode(chat_id)
+        desc = (
+            "🛡️ **纯对话安全模式**（安全问答思考，不执行服务器系统命令）"
+            if current_mode == "chat"
+            else "🛠️ **全功能 DevOps Agent 模式**（已赋予宿主机终端执行与文件操作权）"
+        )
+        text = (
+            f"⚙️ **当前运行模式**: `{current_mode.upper()}`\n"
+            f"说明: {desc}\n\n"
+            "📌 **如何切换模式**：\n"
+            "• `/mode chat` - 切为纯对话安全模式\n"
+            "• `/mode agent` - 切为 DevOps 运维 Agent 模式"
+        )
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        return
+
+    target = args[0].lower().strip()
+    if target in ["chat", "agent"]:
+        agy_engine.set_mode(chat_id, target)
+        if target == "agent":
+            msg = (
+                "🚀 **已切换为: 全功能 DevOps Agent 模式**\n\n"
+                "⚠️ **宿主机执行权已激活**：Gemini 3.8 Flash 现在可以直接调用服务器终端命令、查看日志、排障和管理文件。\n\n"
+                "💡 **试着对我说**：\n"
+                "• *帮我检查当前服务器磁盘和内存*\n"
+                "• *查看 docker 容器运行状态*\n"
+                "• *看看 nginx 错误日志为什么报错*\n"
+                "• *查看占用 80 端口的进程*"
+            )
+        else:
+            msg = (
+                "🛡️ **已切换为: 纯对话安全模式**\n\n"
+                "机器人将仅进行深度思考与推理问答，不会调用任何服务器系统命令。"
+            )
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    else:
+        await update.message.reply_text(
+            "❌ 无效的模式参数。请使用 `/mode chat` 或 `/mode agent`。"
+        )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /help 命令"""
@@ -63,12 +117,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"收到用户 {user_id} 的 /help 指令")
     help_text = (
         "📖 **使用帮助指南**\n\n"
-        "1. **日常对话**：直接向机器人发送消息，它会自动记住前序对话上下文。\n"
-        "2. **/clear**：随时清空历史记忆，开启新的独立会话。\n"
-        "3. **/status**：查看后端模型、运行模式和会话状态。\n"
-        "4. **/id**：查看你的数字 ID，用于配置在 `.env` 中的 `ALLOWED_USER_IDS` 防盗刷。\n\n"
-        f"⚙️ **后端模型**: `{config.MODEL_NAME}`\n"
-        f"🛡️ **运行模式**: `{config.AGENT_MODE}`"
+        "1. **日常对话与任务**：直接发送消息，机器人会自动记住前序上下文并处理。\n"
+        "2. **/mode**：查看或切换运行模式：\n"
+        "   - `/mode chat`：纯对话安全模式（默认）\n"
+        "   - `/mode agent`：全功能 DevOps 运维模式（可执行系统命令、巡检排障）\n"
+        "3. **/clear**：随时清空历史记忆，开启新的独立会话。\n"
+        "4. **/status**：查看后端模型、运行模式和会话状态。\n"
+        "5. **/id**：查看你的数字 ID（用于白名单配置）。\n\n"
+        f"⚙️ **后端模型**: `{config.MODEL_NAME}`"
     )
     await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
 
@@ -87,13 +143,14 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """处理 /status 命令"""
     chat_id = update.effective_chat.id
     conv_id = agy_engine.get_conversation_id(chat_id)
+    current_mode = agy_engine.get_mode(chat_id)
     logger.info(f"收到 chat_id={chat_id} 的 /status 指令")
     
     status_text = (
         "📊 **系统运行状态**\n\n"
         f"• **AI 模型**: `{config.MODEL_NAME}`\n"
+        f"• **当前模式**: `{current_mode.upper()} ({'全功能运维' if current_mode == 'agent' else '纯安全对话'})`\n"
         f"• **引擎路径**: `{config.AGY_BIN_PATH}`\n"
-        f"• **运行模式**: `{config.AGENT_MODE.upper()}`\n"
         f"• **当前会话 ID**: `{conv_id if conv_id else '暂无活跃会话（发送首条消息后自动生成）'}`\n"
         f"• **白名单保护**: `{'已启用 (' + str(len(config.ALLOWED_USER_IDS)) + ' 人)' if config.ALLOWED_USER_IDS else '未限制（公开）'}`"
     )
@@ -182,11 +239,12 @@ def main():
         print("=" * 65)
         return
 
-    print(f"🚀 正在启动 Telegram AI Bot (后端模型: {config.MODEL_NAME}, 模式: {config.AGENT_MODE})...")
+    print(f"🚀 正在启动 Telegram AI Bot (后端模型: {config.MODEL_NAME})...")
     app = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).build()
 
     # 注册命令 Handler
     app.add_handler(CommandHandler(["start"], start_command))
+    app.add_handler(CommandHandler(["mode"], mode_command))
     app.add_handler(CommandHandler(["help"], help_command))
     app.add_handler(CommandHandler(["clear", "reset"], clear_command))
     app.add_handler(CommandHandler(["id"], id_command))
@@ -196,7 +254,6 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("✅ Bot 已经成功运行（长轮询模式），在 Telegram 中向它发送消息即可开始对话！")
-    # 设置 drop_pending_updates=False，确保断线重连期间用户发的消息不会丢失
     app.run_polling(drop_pending_updates=False)
 
 if __name__ == "__main__":

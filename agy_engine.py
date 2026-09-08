@@ -13,25 +13,37 @@ SESSION_FILE = os.path.join(os.path.dirname(__file__), "sessions.json")
 class AgyEngine:
     def __init__(self):
         self.conversations: Dict[int, str] = {}
+        self.modes: Dict[int, str] = {}
         self._load_sessions()
 
     def _load_sessions(self):
-        """从本地文件恢复 session 映射关系"""
+        """从本地文件恢复 session 与 mode 映射关系"""
         if os.path.exists(SESSION_FILE):
             try:
                 with open(SESSION_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    self.conversations = {int(k): v for k, v in data.items()}
+                    # 兼容新旧格式
+                    if "conversations" in data:
+                        self.conversations = {int(k): v for k, v in data.get("conversations", {}).items()}
+                        self.modes = {int(k): v for k, v in data.get("modes", {}).items()}
+                    else:
+                        self.conversations = {int(k): v for k, v in data.items()}
+                        self.modes = {}
                 logger.info(f"已恢复 {len(self.conversations)} 个用户的会话记忆。")
             except Exception as e:
                 logger.error(f"加载 sessions.json 失败: {e}")
                 self.conversations = {}
+                self.modes = {}
 
     def _save_sessions(self):
-        """持久化保存会话映射"""
+        """持久化保存会话与模式映射"""
         try:
+            payload = {
+                "conversations": self.conversations,
+                "modes": self.modes
+            }
             with open(SESSION_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.conversations, f, ensure_ascii=False, indent=2)
+                json.dump(payload, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.error(f"保存 sessions.json 失败: {e}")
 
@@ -46,17 +58,29 @@ class AgyEngine:
     def get_conversation_id(self, chat_id: int) -> Optional[str]:
         return self.conversations.get(chat_id)
 
+    def get_mode(self, chat_id: int) -> str:
+        """获取用户当前的运行模式，默认为全局配置的 AGENT_MODE"""
+        return self.modes.get(chat_id, config.AGENT_MODE)
+
+    def set_mode(self, chat_id: int, mode: str) -> bool:
+        """设置用户的运行模式 (chat 或 agent)"""
+        mode = mode.lower().strip()
+        if mode in ("chat", "agent"):
+            self.modes[chat_id] = mode
+            self._save_sessions()
+            logger.info(f"chat_id={chat_id} 切换模式为: {mode}")
+            return True
+        return False
+
     @staticmethod
     def _extract_json(text: str) -> Optional[dict]:
-        """从进程输出中提取 JSON 数据（兼容前后可能有日志干扰的情况）"""
-        # 先直接尝试整体解析
+        """从进程输出中提取 JSON 数据"""
         text = text.strip()
         try:
             return json.loads(text)
         except Exception:
             pass
 
-        # 正则匹配最外层的 JSON 块
         matches = re.findall(r'(\{[\s\S]*\})', text)
         for candidate in reversed(matches):
             try:
@@ -68,6 +92,7 @@ class AgyEngine:
     async def ask(self, chat_id: int, prompt: str) -> Dict[str, Any]:
         """调用 agy CLI 执行提问并返回结构化结果"""
         conv_id = self.conversations.get(chat_id)
+        current_mode = self.get_mode(chat_id)
 
         cmd = [
             config.AGY_BIN_PATH,
@@ -79,11 +104,11 @@ class AgyEngine:
         if conv_id:
             cmd.extend(["--conversation", conv_id])
 
-        if config.AGENT_MODE == "agent":
-            # 开启远程 Agent 全自动执行模式
+        # 如果当前用户处于 agent 模式，开启全功能宿主机操作权
+        if current_mode == "agent":
             cmd.append("--dangerously-skip-permissions")
 
-        logger.info(f"正在调用 agy (chat_id={chat_id}, conv_id={conv_id}, mode={config.AGENT_MODE})")
+        logger.info(f"正在调用 agy (chat_id={chat_id}, conv_id={conv_id}, mode={current_mode})")
 
         try:
             process = await asyncio.create_subprocess_exec(
@@ -112,7 +137,6 @@ class AgyEngine:
 
             if process.returncode != 0:
                 logger.error(f"agy 执行失败 (code={process.returncode}):\nSTDOUT: {stdout_str}\nSTDERR: {stderr_str}")
-                # 检查是否因为旧 conversation 已经过期被删除
                 if "not found" in stderr_str or "not found" in stdout_str:
                     logger.warning("检测到会话失效，自动清理并提示重试...")
                     self.clear(chat_id)
@@ -125,11 +149,9 @@ class AgyEngine:
                     "error": f"❌ agy 执行出错 (code {process.returncode}): {stderr_str or stdout_str}"
                 }
 
-            # 解析 JSON 响应
             data = self._extract_json(stdout_str)
             if not data:
                 logger.warning(f"未能解析出 JSON，原始输出: {stdout_str}")
-                # 如果没有 JSON 但有纯文本输出，直接把 stdout 作为回复
                 response_text = stdout_str.strip() or stderr_str.strip()
                 return {
                     "ok": True,
@@ -137,7 +159,6 @@ class AgyEngine:
                     "conversation_id": None
                 }
 
-            # 提取信息
             response_text = data.get("response", "").strip()
             new_conv_id = data.get("conversation_id")
 
@@ -153,7 +174,8 @@ class AgyEngine:
                 "response": response_text,
                 "conversation_id": new_conv_id,
                 "duration": duration,
-                "usage": usage
+                "usage": usage,
+                "mode": current_mode
             }
 
         except Exception as e:
