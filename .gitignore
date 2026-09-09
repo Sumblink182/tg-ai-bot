@@ -3,6 +3,8 @@
 
 # 运行态会话缓存与日志
 sessions.json
+.*quota*.json
+*.quota*.json
 *.log
 *.pid
 

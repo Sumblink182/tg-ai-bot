@@ -350,6 +350,15 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("✨ 当前本来就是全新会话，无需清理，请直接指派任务！")
 
+async def restart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理 /restart 命令（仅白名单管理员可用）"""
+    user_id = update.effective_user.id if update.effective_user else 0
+    if not config.ALLOWED_USER_IDS or user_id not in config.ALLOWED_USER_IDS:
+        return
+    await update.message.reply_text("🔄 正在平滑热重启 Bot 服务并加载最新代码，预计 5 秒内就绪...")
+    asyncio.get_running_loop().call_later(0.8, lambda: os._exit(0))
+
+
 async def keep_typing(bot, chat_id: int, stop_event: asyncio.Event):
     """在后台持续发送 typing 动作，提升用户体验"""
     while not stop_event.is_set():
@@ -491,6 +500,7 @@ def main():
     app.add_handler(CommandHandler(["help"], help_command))
     app.add_handler(CommandHandler(["clear", "reset"], clear_command))
     app.add_handler(CommandHandler(["cancel", "stop"], cancel_command))
+    app.add_handler(CommandHandler(["restart", "reload"], restart_command))
     app.add_handler(CommandHandler(["id"], id_command))
     app.add_handler(CommandHandler(["status"], status_command))
 

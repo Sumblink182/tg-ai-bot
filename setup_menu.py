@@ -14,6 +14,7 @@ async def setup_bot_menu():
         BotCommand("cancel", "强制终止当前正在运行的后台任务"),
         BotCommand("clear", "清除当前记忆，开启全新任务"),
         BotCommand("status", "查看系统状态、运行模式与安全配置"),
+        BotCommand("restart", "热重启 Bot 守护进程并加载最新代码"),
         BotCommand("id", "获取你的 Telegram 用户数字 ID"),
         BotCommand("help", "查看详细功能使用指南")
     ]
