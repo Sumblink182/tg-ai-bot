@@ -89,6 +89,38 @@ def _list_agy_ports() -> List[int]:
 _TLS = ssl._create_unverified_context()
 
 
+def _post_user_status(port: int, timeout: float = 4.0) -> Optional[Dict[str, Any]]:
+    """POST GetUserStatus to one local port. Returns parsed JSON or None."""
+    import urllib.request
+
+    url = (
+        f"https://127.0.0.1:{port}/exa.language_server_pb."
+        "LanguageServerService/GetUserStatus"
+    )
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(
+            {
+                "metadata": {
+                    "ideName": "antigravity",
+                    "extensionName": "antigravity",
+                    "locale": "en",
+                }
+            }
+        ).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "Connect-Protocol-Version": "1",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout, context=_TLS) as resp:
+        data = json.loads(resp.read().decode("utf-8", errors="replace"))
+    if "userStatus" in data or _find_key(data, "userStatus") is not None:
+        return data
+    return None
+
+
 def probe_local_rpc(timeout: float = 4.0) -> Optional[Dict[str, Any]]:
     """
     Probe the local agy Connect RPC for a userStatus snapshot.
@@ -97,32 +129,33 @@ def probe_local_rpc(timeout: float = 4.0) -> Optional[Dict[str, Any]]:
     """
     for port in _list_agy_ports():
         try:
-            import urllib.request
-
-            url = f"https://127.0.0.1:{port}/exa.language_server_pb.LanguageServerService/GetUserStatus"
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(
-                    {
-                        "metadata": {
-                            "ideName": "antigravity",
-                            "extensionName": "antigravity",
-                            "locale": "en",
-                        }
-                    }
-                ).encode(),
-                headers={
-                    "Content-Type": "application/json",
-                    "Connect-Protocol-Version": "1",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=timeout, context=_TLS) as resp:
-                data = json.loads(resp.read().decode("utf-8", errors="replace"))
-            if "userStatus" in data or _find_key(data, "userStatus") is not None:
+            data = _post_user_status(port, timeout=timeout)
+            if data:
                 return data
         except Exception:
             continue
+    return None
+
+
+def capture_during_call(duration: float = 60.0, interval: float = 2.0) -> Optional[Dict[str, Any]]:
+    """
+    Run inside a worker thread DURING an agy call. The agy process hosts its
+    local RPC only while alive (headless `-p` runs included — verified live:
+    quota refreshes on every doRefreshQuota), so we poll for the port inside
+    that window and grab a userStatus snapshot. Saves cache on success.
+    Fire-and-forget safe: never raises, bounded by `duration`.
+    """
+    deadline = time.time() + max(5.0, duration)
+    while time.time() < deadline:
+        for port in _list_agy_ports():
+            try:
+                data = _post_user_status(port, timeout=3.0)
+            except Exception:
+                continue
+            if data:
+                save_cache(data)
+                return data
+        time.sleep(interval)
     return None
 
 
@@ -137,6 +170,19 @@ async def probe_and_cache(timeout: float = 15.0) -> Optional[Dict[str, Any]]:
     if data:
         save_cache(data)
     return data
+
+
+async def async_capture_during_call(duration: float = 60.0, interval: float = 2.0) -> Optional[Dict[str, Any]]:
+    """Async wrapper around capture_during_call for use inside the bot loop."""
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: capture_during_call(duration=duration, interval=interval)
+        )
+    except asyncio.CancelledError:
+        return None
+    except Exception:
+        return None
 
 
 # ------------------------------------------------------------- extraction
@@ -158,11 +204,23 @@ def _find_key(obj: Any, name: str) -> Any:
     return None
 
 
+# Generic path segments that carry no identity info
+_GENERIC_NAMES = {
+    "userStatus", "cascadeModelConfigData", "clientModelConfigs",
+    "quotaInfo", "quotaStatus", "quota", "buckets", "planStatus",
+}
+
+
 def _walk_nodes(obj: Any) -> List[Dict[str, Any]]:
-    """Collect every dict that carries quota-ish fields, with context names."""
+    """Collect every dict that carries quota-ish fields, with identity hints.
+
+    For Antigravity's GetUserStatus payload, quota blocks live inside
+    clientModelConfigs[].quotaInfo — the model identity is a SIBLING key
+    (modelOrAlias / modelId) of the config dict, so we inherit it as a hint.
+    """
     nodes: List[Dict[str, Any]] = []
 
-    def visit(o: Any, names: List[str]) -> None:
+    def visit(o: Any, names: List[str], hint: Optional[str] = None) -> None:
         if isinstance(o, dict):
             keys = set(o.keys())
             if keys & {
@@ -173,12 +231,27 @@ def _walk_nodes(obj: Any) -> List[Dict[str, Any]]:
                 "reset_in_seconds",
                 "resetInSeconds",
             }:
-                nodes.append({"names": list(names), "node": o})
+                nm = list(names)
+                if hint:
+                    nm.append(hint)
+                nodes.append({"names": nm, "node": o})
+            # Identity priority: modelId > modelOrAlias > model > displayName.
+            # NOTE (verified live): modelOrAlias can be an OBJECT
+            # ({"model": "MODEL_PLACEHOLDER_M73"}) while modelId holds the
+            # canonical model string — so modelId must be checked first.
+            mhint = None
+            for k in ("modelId", "modelOrAlias", "model", "displayName", "label"):
+                v = o.get(k)
+                if isinstance(v, dict):
+                    v = v.get("model") or v.get("id") or v.get("name") or v.get("display_name")
+                if isinstance(v, str) and v.strip():
+                    mhint = v.strip()
+                    break
             for k, v in o.items():
-                visit(v, names + [str(k)])
+                visit(v, names + [str(k)], str(mhint) if mhint else None)
         elif isinstance(o, list):
             for v in o:
-                visit(v, names)
+                visit(v, names, hint)
 
     visit(obj, [])
     return nodes
@@ -222,7 +295,10 @@ def extract_entries(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
                 pass
         entries.append(
             {
-                "name": "/".join(n for n in names if not re.fullmatch(r"\d+", n)) or "quota",
+                "name": "/".join(
+                    n for n in item["names"]
+                    if n not in _GENERIC_NAMES and not re.fullmatch(r"\d+", n)
+                ) or "quota",
                 "remaining": remaining,
                 "reset_time": reset_time,
                 "reset_in_seconds": int(reset_sec) if reset_sec is not None else None,
@@ -398,18 +474,29 @@ def format_markdown(data: Dict[str, Any]) -> str:
     if data.get("reason"):
         return f"📊 Gemini 额度: 不可用（{data['reason']}）"
 
-    lines = []
     entries = data.get("entries") or []
+    weekly = data.get("weekly") or []
+    lines = []
+
     if entries:
-        lines.append("📊 *Gemini 额度（5h 窗口）*")
-        for e in entries[:4]:
+        # Group by (remaining, reset_time): Antigravity shares one bucket
+        # across the whole Gemini Flash/Pro family — show it as one line.
+        groups: Dict[Any, Dict[str, Any]] = {}
+        for e in entries:
+            key = (e.get("remaining"), e.get("reset_time"))
+            g = groups.setdefault(key, {"members": [], "e": e})
+            g["members"].append(e["name"])
+        lines.append("📊 *模型额度（实测自本机 agy）*")
+        for g in groups.values():
+            e = g["e"]
             rem = e.get("remaining")
             rem_str = f"{rem:g}%" if isinstance(rem, (int, float)) else "未知"
             tail = _fmt_reset(e)
-            lines.append(f"• {e['name']}: 剩余 {rem_str}" + (f"（{tail}）" if tail else ""))
-    weekly = data.get("weekly") or []
+            m = g["members"]
+            label = " / ".join(m[:2]) + (f" 等{len(m)}个模型" if len(m) > 2 else "")
+            lines.append(f"• {label}: 剩余 {rem_str}" + (f"（{tail}）" if tail else ""))
     if weekly:
-        lines.append("📊 *Gemini 额度（周窗口）*")
+        lines.append("📊 *周窗口额度*")
         for e in weekly[:2]:
             rem = e.get("remaining")
             rem_str = f"{rem:g}%" if isinstance(rem, (int, float)) else "未知"
@@ -424,7 +511,7 @@ def format_markdown(data: Dict[str, Any]) -> str:
     else:
         age = data.get("age_seconds")
         age_str = _humanize_seconds(age) + "前" if age else ""
-        lines.append(f"（缓存快照{age_str}，agy 未在运行）")
+        lines.append(f"（缓存快照{age_str}，下次对话后自动刷新）")
     return "\n".join(lines)
 
 
@@ -457,7 +544,29 @@ if __name__ == "__main__":
     assert abs(g["remaining"] - 71.2) < 0.2, g
     c = next(e for e in ent if "claude" in e["name"])
     assert abs(c["remaining"] - 90.0) < 0.2, c
-    print("extract_entries OK:", json.dumps(ent, ensure_ascii=False))
+
+    # Real GetUserStatus shape: identity is a SIBLING key of quotaInfo
+    real = {
+        "userStatus": {
+            "cascadeModelConfigData": {
+                "clientModelConfigs": [
+                    {"modelOrAlias": "claude-sonnet-4-6",
+                     "quotaInfo": {"remainingFraction": 1, "resetTime": "2026-09-09T05:33:07Z"}},
+                    {"modelOrAlias": "gemini-3.8-flash-high",
+                     "quotaInfo": {"remainingFraction": 0.8865693, "resetTime": "2026-09-09T03:51:08Z"}},
+                    {"modelOrAlias": "gemini-3.7-flash-high",
+                     "quotaInfo": {"remainingFraction": 0.8865693, "resetTime": "2026-09-09T03:51:08Z"}},
+                ]
+            }
+        }
+    }
+    ent2 = extract_entries(real)
+    names2 = {e["name"] for e in ent2}
+    assert "claude-sonnet-4-6" in names2, names2
+    assert "gemini-3.8-flash-high" in names2, names2
+    gem = next(e for e in ent2 if e["name"] == "gemini-3.8-flash-high")
+    assert abs(gem["remaining"] - 88.7) < 0.2, gem
+    print("extract_entries OK:", json.dumps(ent2, ensure_ascii=False))
 
     data = get_quota(live=False)
     print("no-live path:", json.dumps({k: v for k, v in data.items() if k != "raw"}, ensure_ascii=False))

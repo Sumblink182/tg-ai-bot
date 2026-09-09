@@ -7,6 +7,11 @@ import re
 from typing import Dict, Optional, Any
 import config
 
+try:
+    import quota as quota_module
+except Exception:
+    quota_module = None
+
 logger = logging.getLogger(__name__)
 
 SESSION_FILE = os.path.join(os.path.dirname(__file__), "sessions.json")
@@ -174,6 +179,18 @@ class AgyEngine:
 
         logger.info(f"正在调用 agy (chat_id={chat_id}, conv_id={conv_id}, mode={current_mode})")
 
+        # agy 进程存活期间才暴露本地 RPC，调用进行中并发采样额度快照
+        self._quota_sampler = None
+        if quota_module is not None:
+            try:
+                self._quota_sampler = asyncio.create_task(
+                    quota_module.async_capture_during_call(
+                        duration=min(60, config.TIMEOUT_SECONDS)
+                    )
+                )
+            except Exception:
+                self._quota_sampler = None
+
         try:
             returncode, stdout_str, stderr_str = await self._run_agy_process(
                 chat_id=chat_id,
@@ -199,6 +216,11 @@ class AgyEngine:
                 "ok": False,
                 "error": f"❌ 内部调用发生异常: {str(e)}"
             }
+        finally:
+            sampler = getattr(self, "_quota_sampler", None)
+            self._quota_sampler = None
+            if sampler is not None and not sampler.done():
+                sampler.cancel()
 
         # 检查是否为会话过期
         if conv_id and CONVERSATION_EXPIRED_PATTERN.search(stderr_str):
